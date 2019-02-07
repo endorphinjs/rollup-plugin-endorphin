@@ -1,33 +1,27 @@
 {
   "name": "@endorphinjs/rollup-plugin-endorphin",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Rollup plugin for building Endorphin templates",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "prepublish": "npm run build"
   },
-  "keywords": [],
+  "keywords": ["rollup-plugin", "endorphin", "endorphinjs"],
   "author": "Sergey Chikuyonok <serge.che@gmail.com>",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "dependencies": {
-    "@endorphinjs/template-compiler": "0.0.0",
-    "@endorphinjs/template-runtime": "0.0.0",
     "rollup-pluginutils": "^2.3.3",
     "source-map": "^0.7.3"
   },
-  "optionalDependencies": {
+  "peerDependencies": {
+    "endorphin": "*",
     "rollup": "^1.1.2"
   },
   "devDependencies": {
+    "@types/node": "^10.12.21",
     "@types/rollup": "^0.54.0",
-    "node-sass": "^4.11.0",
-    "rollup-plugin-commonjs": "^9.2.0",
-    "rollup-plugin-node-resolve": "^4.0.0",
-    "rollup-plugin-sass": "^1.1.0",
-    "rollup-plugin-terser": "^4.0.3",
-    "rollup-plugin-typescript": "^1.0.0",
     "typescript": "^3.3.1"
   }
 }
