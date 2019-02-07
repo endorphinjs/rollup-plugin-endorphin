@@ -1,6 +1,6 @@
 {
   "name": "@endorphinjs/rollup-plugin-endorphin",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Rollup plugin for building Endorphin templates",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -8,7 +8,11 @@
     "build": "tsc",
     "prepublish": "npm run build"
   },
-  "keywords": ["rollup-plugin", "endorphin", "endorphinjs"],
+  "keywords": [
+    "rollup-plugin",
+    "endorphin",
+    "endorphinjs"
+  ],
   "author": "Sergey Chikuyonok <serge.che@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
