@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 'source-map';
+const mkdirp = require('mkdirp');
 
 type TransformedResource = string | Buffer | { code: string | Buffer, map: any }
 type TransformedResult = string | CodeWithMap;
@@ -131,7 +132,11 @@ export function endorphin(options?: EndorphinPluginOptions): object {
             // CSS selectors
             await Promise.all(stylesheets.map(async (stylesheet, i) => {
                 const isExternal = stylesheet.url !== id;
-                let fullId = await this.resolveId(stylesheet.url, id) as string;
+                // XXX when resolved via `this.resolveId()`, a file name could lead
+                // to Node module resolve, e.g. `my-file.css` can be resolved as
+                // `node_modules/my-file.css/index.js`
+                // let fullId = await this.resolveId(stylesheet.url, id);
+                let fullId = path.resolve(path.dirname(id), stylesheet.url);
                 let content = '';
 
                 if (isExternal) {
@@ -196,9 +201,12 @@ export function endorphin(options?: EndorphinPluginOptions): object {
             if (typeof options.css.bundle === 'function') {
                 options.css.bundle(code, map);
             } else {
+                const dir = path.dirname(options.css.bundle);
+                mkdirp.sync(dir);
+
                 if (map) {
                     const sourceMapPath = path.basename(options.css.bundle) + '.map';
-                    const fullSourceMapPath = path.join(path.dirname(options.css.bundle), sourceMapPath);
+                    const fullSourceMapPath = path.join(dir, sourceMapPath);
                     code += `\n/*# sourceMappingURL=${sourceMapPath} */`;
                     fs.writeFileSync(fullSourceMapPath, map.toString());
                 }
@@ -211,18 +219,15 @@ export function endorphin(options?: EndorphinPluginOptions): object {
 async function transformResource(type: string, content: string, url: string, transformer: ResourceTransformer): Promise<CodeWithMap> {
     const transformed: TransformedResource = await transformer(type, content, url);
 
-    if (Buffer.isBuffer(transformed)) {
-        return { code: transformed.toString() };
+    const result = typeof transformed === 'string' || Buffer.isBuffer(transformed)
+        ? { code: transformed }
+        : transformed;
+
+    if (Buffer.isBuffer(result.code)) {
+        result.code = result.code.toString()
     }
 
-    if (typeof transformed === 'object' && Buffer.isBuffer(transformed.code)) {
-        return {
-            ...transformed,
-            code: transformed.code.toString()
-        };
-    }
-
-    return { code: String(transformed) };
+    return result as CodeWithMap;
 }
 
 async function nodeFromTransformed(data: TransformedResult, source: string, fileName?: string): Promise<SourceNode> {
