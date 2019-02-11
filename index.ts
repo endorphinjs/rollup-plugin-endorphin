@@ -141,7 +141,7 @@ export function endorphin(options?: EndorphinPluginOptions): object {
 
                 if (isExternal) {
                     // Watch for external stylesheets
-                    this.addWatchFile(stylesheet.url);
+                    this.addWatchFile(fullId);
                     content = fs.readFileSync(fullId, 'utf8');
                 } else {
                     content = stylesheet.content.value;
