@@ -122,7 +122,10 @@ export function endorphin(options?: EndorphinPluginOptions): object {
             // hook on it’s processing
             scripts.forEach((script, i) => {
                 if (script.content) {
-                    const assetUrl = createAssetUrl(parsed.url, options.types[script.mime] || options.types[defaultScriptType], i);
+                    let assetUrl = createAssetUrl(parsed.url, options.types[script.mime] || options.types[defaultScriptType], i);
+                    if (assetUrl[0] !== '.' && assetUrl[0] !== '/' && assetUrl[0] !== '@') {
+                        assetUrl = `./${assetUrl}`;
+                    }
                     jsResources[assetUrl] = script.content.value;
                     script.content.value = `export * from "${assetUrl}";`;
                 }
@@ -174,6 +177,7 @@ export function endorphin(options?: EndorphinPluginOptions): object {
             return endorphin.generate(parsed, {
                 module: 'endorphin',
                 cssScope,
+                warn: (msg: string, pos?: number) => this.warn(msg, pos),
                 ...options.template
             });
         },
