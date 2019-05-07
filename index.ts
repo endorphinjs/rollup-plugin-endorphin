@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 'source-map';
+import { ParsedTemplate } from '@endorphinjs/template-compiler';
 const mkdirp = require('mkdirp');
 
 type TransformedResource = string | Buffer | { code: string | Buffer, map: any }
@@ -115,7 +116,7 @@ export function endorphin(options?: EndorphinPluginOptions): object {
             const cssScope = options.css.scope(id);
 
             // Parse Endorphin template into AST
-            const parsed = endorphin.parse(source, id);
+            const parsed = endorphin.parse(source, id) as ParsedTemplate;
             const { scripts, stylesheets } = parsed.ast;
 
             // For inline scripts, emit source code as external module so we can
@@ -126,14 +127,14 @@ export function endorphin(options?: EndorphinPluginOptions): object {
                     if (assetUrl[0] !== '.' && assetUrl[0] !== '/' && assetUrl[0] !== '@') {
                         assetUrl = `./${assetUrl}`;
                     }
-                    jsResources[assetUrl] = script.content.value;
-                    script.content.value = `export * from "${assetUrl}";`;
+                    jsResources[assetUrl] = script.content;
+                    script.content = `export * from "${assetUrl}";`;
                 }
             });
 
             // Process stylesheets: apply custom transform (if required) and scope
             // CSS selectors
-            await Promise.all(stylesheets.map(async (stylesheet, i) => {
+            await Promise.all(stylesheets.map(async (stylesheet) => {
                 const isExternal = stylesheet.url !== id;
                 // XXX when resolved via `this.resolveId()`, a file name could lead
                 // to Node module resolve, e.g. `my-file.css` can be resolved as
@@ -147,7 +148,7 @@ export function endorphin(options?: EndorphinPluginOptions): object {
                     this.addWatchFile(fullId);
                     content = fs.readFileSync(fullId, 'utf8');
                 } else {
-                    content = stylesheet.content.value;
+                    content = stylesheet.content;
                 }
 
                 let transformed: CodeWithMap = { code: content };

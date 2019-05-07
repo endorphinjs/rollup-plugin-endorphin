@@ -17,16 +17,18 @@
   "license": "Apache-2.0",
   "dependencies": {
     "mkdirp": "^0.5.1",
-    "rollup-pluginutils": "^2.3.3",
+    "rollup-pluginutils": "^2.6.0",
     "source-map": "^0.7.3"
   },
   "peerDependencies": {
     "endorphin": "*",
-    "rollup": "^1.1.2"
+    "rollup": "^1.11.3"
   },
   "devDependencies": {
+    "@endorphinjs/template-compiler": "0.2.0-1",
+    "@endorphinjs/template-parser": "^0.2.4",
     "@types/node": "^10.12.21",
     "@types/rollup": "^0.54.0",
-    "typescript": "^3.3.1"
+    "typescript": "^3.4.5"
   }
 }
