@@ -95,7 +95,7 @@ export function endorphin(options?: EndorphinPluginOptions): object {
     const filter = createFilter(options.include, options.exclude);
     const jsResources = {};
     const cssResources: Map<string, SourceNode> = new Map();
-    const endorphin = require('endorphin/compiler.js');
+    const endorphin = require('endorphin/compiler');
 
     return {
         name: 'endorphin',
@@ -116,7 +116,7 @@ export function endorphin(options?: EndorphinPluginOptions): object {
             const cssScope = options.css.scope(id);
 
             // Parse Endorphin template into AST
-            const parsed = endorphin.parse(source, id) as ParsedTemplate;
+            const parsed = endorphin.parse(source, id, options.template) as ParsedTemplate;
             const { scripts, stylesheets } = parsed.ast;
 
             // For inline scripts, emit source code as external module so we can
