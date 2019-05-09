@@ -77,7 +77,7 @@ const defaultCSSOptions = {
     }
 }
 
-export function endorphin(options?: EndorphinPluginOptions): object {
+export default function endorphin(options?: EndorphinPluginOptions): object {
     options = {
         ...defaultOptions,
         ...options
