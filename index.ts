@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 'source-map';
-import { ParsedTemplate } from '@endorphinjs/template-compiler';
+import { ParsedTemplate, CompileOptions } from '@endorphinjs/template-compiler';
 const mkdirp = require('mkdirp');
 
 type TransformedResource = string | Buffer | { code: string | Buffer, map: any }
@@ -32,7 +32,7 @@ interface EndorphinPluginOptions {
     types: { [type: string]: string };
 
     /** Additional options for template compiler */
-    template?: object;
+    template?: CompileOptions;
 
     /** Options for CSS processing */
     css?: {

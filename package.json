@@ -25,10 +25,17 @@
     "rollup": "^1.11.3"
   },
   "devDependencies": {
-    "@endorphinjs/template-compiler": "0.2.0-1",
-    "@endorphinjs/template-parser": "^0.2.4",
+    "@endorphinjs/template-compiler": "^0.3.2",
     "@types/node": "^10.12.21",
     "@types/rollup": "^0.54.0",
     "typescript": "^3.4.5"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endorphinjs/rollup-plugin-endorphin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/endorphinjs/rollup-plugin-endorphin/issues"
+  },
+  "homepage": "https://github.com/endorphinjs/rollup-plugin-endorphin#readme"
 }
