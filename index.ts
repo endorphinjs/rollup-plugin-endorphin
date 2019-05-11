@@ -5,9 +5,13 @@ import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 
 import { ParsedTemplate, CompileOptions } from '@endorphinjs/template-compiler';
 const mkdirp = require('mkdirp');
 
-type TransformedResource = string | Buffer | { code: string | Buffer, map: any }
+type TransformedResource = string | Buffer | {
+    code?: string | Buffer,
+    css?: string | Buffer,
+    map?: any
+};
 type TransformedResult = string | CodeWithMap;
-type CodeWithMap = { code: string, map?: object };
+type CodeWithMap = { code: string, map?: any };
 
 interface ResourceTransformer {
     (type: string, code: string, filename: string): TransformedResource | Promise<TransformedResource>;
@@ -163,10 +167,18 @@ export default function endorphin(options?: EndorphinPluginOptions): object {
 
                 // Isolate CSS selector with scope token
                 if (cssScope) {
-                    const scoped = await endorphin.scopeCSS(transformed.code, cssScope, {
-                        filename: fullId,
-                        map: transformed.map
-                    });
+                    let filename = fullId;
+                    let map = transformed.map;
+
+                    if (typeof map === 'string') {
+                        map = JSON.parse(map);
+                    }
+
+                    if (map && map.file) {
+                        filename = map.file;
+                    }
+
+                    const scoped = await endorphin.scopeCSS(transformed.code, cssScope, { filename, map });
                     transformed = typeof scoped === 'string' ? { code: scoped } : scoped;
                 }
 
@@ -183,7 +195,7 @@ export default function endorphin(options?: EndorphinPluginOptions): object {
             });
         },
 
-        generateBundle(outputOptions: any) {
+        async generateBundle(outputOptions: any) {
             if (!options.css.bundle) {
                 return;
             }
@@ -204,7 +216,7 @@ export default function endorphin(options?: EndorphinPluginOptions): object {
             }
 
             if (typeof options.css.bundle === 'function') {
-                options.css.bundle(code, map);
+                return options.css.bundle(code, map);
             } else {
                 const dir = path.dirname(options.css.bundle);
                 mkdirp.sync(dir);
@@ -224,15 +236,27 @@ export default function endorphin(options?: EndorphinPluginOptions): object {
 async function transformResource(type: string, content: string, url: string, transformer: ResourceTransformer): Promise<CodeWithMap> {
     const transformed: TransformedResource = await transformer(type, content, url);
 
-    const result = typeof transformed === 'string' || Buffer.isBuffer(transformed)
+    const result: TransformedResource = typeof transformed === 'string' || Buffer.isBuffer(transformed)
         ? { code: transformed }
         : transformed;
 
-    if (Buffer.isBuffer(result.code)) {
-        result.code = result.code.toString()
+    let code = result.css || result.code;
+    let map = result.map;
+
+    if (Buffer.isBuffer(code)) {
+        code = code.toString()
     }
 
-    return result as CodeWithMap;
+    if (Buffer.isBuffer(map)) {
+        map = map.toString();
+    }
+
+    if (map && map.addMapping) {
+        // Source map is a SourceMapGenerator
+        result.map = result.map.toJSON();
+    }
+
+    return { code, map };
 }
 
 async function nodeFromTransformed(data: TransformedResult, source: string, fileName?: string): Promise<SourceNode> {
