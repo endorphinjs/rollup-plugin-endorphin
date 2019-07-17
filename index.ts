@@ -77,7 +77,7 @@ const defaultCSSOptions = {
             s1 = (s1 + filePath.charCodeAt(i)) % 65521;
             s2 = (s2 + s1) % 65521;
         }
-        return 'end' + ((s2 << 16) + s1).toString(36);
+        return 'e' + ((s2 << 16) + s1).toString(36);
     }
 }
 
@@ -131,8 +131,9 @@ export default function endorphin(options?: EndorphinPluginOptions): object {
                     if (assetUrl[0] !== '.' && assetUrl[0] !== '/' && assetUrl[0] !== '@') {
                         assetUrl = `./${assetUrl}`;
                     }
-                    jsResources[assetUrl] = script.content;
-                    script.content = `export * from "${assetUrl}";`;
+                    jsResources[assetUrl] = script.transformed || script.content;
+                    script.url = assetUrl;
+                    script.transformed = script.content = void 0;
                 }
             });
 

@@ -6,6 +6,7 @@
     "alwaysStrict": true,
     "noImplicitThis": true,
     "module": "commonjs",
+    "moduleResolution": "node",
     "outDir": "./dist",
     "declaration": true
   },
