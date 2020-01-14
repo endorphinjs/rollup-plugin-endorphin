@@ -5,7 +5,6 @@ import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 
 import { ParsedTemplate, CompileOptions } from '@endorphinjs/template-compiler';
 import { Plugin,  } from 'rollup';
 import { simple } from 'acorn-walk';
-const mkdirp = require('mkdirp');
 
 type TransformedResource = string | Buffer | {
     code?: string | Buffer,
@@ -59,7 +58,7 @@ interface EndorphinPluginOptions {
          * Path where CSS bundle should be saved or function which accepts generated
          * CSS bundle and its source map
          */
-        bundle?: string | CSSBundleHandler;
+        name?: string | CSSBundleHandler;
     };
 }
 
@@ -148,7 +147,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             return id in jsResources ? id : null;
         },
 
-        async transform(this: any, source: string, id: string) {
+        async transform(source: string, id: string) {
             if (!filter(id) || !options.extensions.includes(path.extname(id))) {
                 return null;
             }
@@ -233,13 +232,17 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
         },
 
         async generateBundle(outputOptions: any) {
-            if (!options.css.bundle) {
+            if (!options.css.name) {
                 return;
             }
 
             const output = new SourceNode();
-            for (const node of cssResources.values()) {
-                output.add(node);
+
+            // Sort stylesheets to preserve contents across builds
+            // XXX sort stylesheets in topological order?
+            const stylesheetIds = Array.from(cssResources.keys()).sort();
+            for (const id of stylesheetIds) {
+                output.add(cssResources.get(id));
             }
 
             let code: string, map: SourceMapGenerator;
@@ -252,19 +255,25 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
                 code = output.toString();
             }
 
-            if (typeof options.css.bundle === 'function') {
-                return options.css.bundle(code, map);
+            if (typeof options.css.name === 'function') {
+                return options.css.name(code, map);
             } else {
-                const dir = path.dirname(options.css.bundle);
-                mkdirp.sync(dir);
-
                 if (map) {
-                    const sourceMapPath = path.basename(options.css.bundle) + '.map';
-                    const fullSourceMapPath = path.join(dir, sourceMapPath);
-                    code += `\n/*# sourceMappingURL=${sourceMapPath} */`;
-                    fs.writeFileSync(fullSourceMapPath, map.toString());
+                    const sourceMapName = options.css.name + '.map';
+                    code += `\n/*# sourceMappingURL=${sourceMapName} */`;
+
+                    this.emitFile({
+                        type: 'asset',
+                        fileName: sourceMapName,
+                        source: map.toString()
+                    });
                 }
-                fs.writeFileSync(options.css.bundle, code);
+
+                this.emitFile({
+                    type: 'asset',
+                    fileName: options.css.name,
+                    source: code
+                });
             }
         }
     };
