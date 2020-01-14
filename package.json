@@ -16,19 +16,19 @@
   "author": "Sergey Chikuyonok <serge.che@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
+    "acorn-walk": "^7.0.0",
     "mkdirp": "^0.5.1",
-    "rollup-pluginutils": "^2.6.0",
+    "rollup-pluginutils": "^2.8.2",
     "source-map": "^0.7.3"
   },
   "peerDependencies": {
-    "endorphin": "*",
-    "rollup": "^1.11.3"
+    "endorphin": "*"
   },
   "devDependencies": {
-    "@endorphinjs/template-compiler": "^0.3.2",
-    "@types/node": "^10.12.21",
+    "@endorphinjs/template-compiler": "^0.6.4",
+    "@types/node": "^13.1.6",
     "@types/rollup": "^0.54.0",
-    "typescript": "^3.4.5"
+    "typescript": "^3.7.4"
   },
   "repository": {
     "type": "git",

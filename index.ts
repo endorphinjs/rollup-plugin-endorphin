@@ -3,6 +3,8 @@ import * as path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 'source-map';
 import { ParsedTemplate, CompileOptions } from '@endorphinjs/template-compiler';
+import { Plugin,  } from 'rollup';
+import { simple } from 'acorn-walk';
 const mkdirp = require('mkdirp');
 
 type TransformedResource = string | Buffer | {
@@ -21,6 +23,13 @@ interface CSSBundleHandler {
     (code: string, map?: SourceMapGenerator): void;
 }
 
+interface HelpersMap {
+    [url: string]: string[];
+}
+
+type PluginCompileOptions = CompileOptions & { helpers: string[] | HelpersMap }
+
+
 interface EndorphinPluginOptions {
     /**
      * List of file extensions which should be treated as Endorphin template.
@@ -36,7 +45,7 @@ interface EndorphinPluginOptions {
     types: { [type: string]: string };
 
     /** Additional options for template compiler */
-    template?: CompileOptions;
+    template?: PluginCompileOptions;
 
     /** Options for CSS processing */
     css?: {
@@ -81,7 +90,7 @@ const defaultCSSOptions = {
     }
 }
 
-export default function endorphin(options?: EndorphinPluginOptions): object {
+export default function endorphin(options?: EndorphinPluginOptions): Plugin {
     options = {
         ...defaultOptions,
         ...options
@@ -103,6 +112,33 @@ export default function endorphin(options?: EndorphinPluginOptions): object {
 
     return {
         name: 'endorphin',
+
+        buildStart() {
+            if (options.template && Array.isArray(options.template.helpers)) {
+                // Resolve helpers symbols, defined in given list of helper files
+                const helpers: HelpersMap = {};
+
+                options.template.helpers.forEach(helper => {
+                    const absPath = path.resolve(helper);
+                    const contents = fs.readFileSync(absPath, 'utf8');
+                    this.addWatchFile(absPath);
+                    const ast = this.parse(contents, { sourceType: 'module' });
+                    const symbols: string[] = [];
+
+                    simple(ast, {
+                        ExportNamedDeclaration(node: any) {
+                            if (node.declaration.type === 'FunctionDeclaration' || node.declaration.type === 'VariableDeclaration') {
+                                symbols.push(node.declaration.id.name);
+                            }
+                        }
+                    });
+
+                    helpers[helper] = symbols;
+                });
+
+                options.template.helpers = helpers;
+            }
+        },
 
         load(id: string) {
             return id in jsResources ? jsResources[id] : null;
