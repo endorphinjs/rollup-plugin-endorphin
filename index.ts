@@ -257,24 +257,24 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
 
             if (typeof options.css.name === 'function') {
                 return options.css.name(code, map);
-            } else {
-                if (map) {
-                    const sourceMapName = options.css.name + '.map';
-                    code += `\n/*# sourceMappingURL=${sourceMapName} */`;
+            }
 
-                    this.emitFile({
-                        type: 'asset',
-                        fileName: sourceMapName,
-                        source: map.toString()
-                    });
-                }
+            if (map) {
+                const sourceMapName = options.css.name + '.map';
+                code += `\n/*# sourceMappingURL=${sourceMapName} */`;
 
                 this.emitFile({
                     type: 'asset',
-                    fileName: options.css.name,
-                    source: code
+                    fileName: sourceMapName,
+                    source: map.toString()
                 });
             }
+
+            this.emitFile({
+                type: 'asset',
+                name: options.css.name,
+                source: code
+            });
         }
     };
 }
