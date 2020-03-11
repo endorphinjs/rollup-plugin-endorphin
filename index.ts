@@ -106,7 +106,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
 
     const filter = createFilter(options.include, options.exclude);
     const jsResources = {};
-    const cssResources: Map<string, SourceNode> = new Map();
+    const cssResources = new Map<string, SourceNode>();
     const endorphin = require('endorphin/compiler');
 
     return {
@@ -219,7 +219,10 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
                 }
 
                 const node = await nodeFromTransformed(transformed, content, fullId);
-                cssResources.set(fullId, node);
+
+                // NB: add scope as prefix to properly store reference to the same
+                // stylesheet file in different components
+                cssResources.set(`${cssScope}:${fullId}`, node);
             }));
 
             // Generate JavaScript code from template AST
