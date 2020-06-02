@@ -1,6 +1,6 @@
 {
   "name": "@endorphinjs/rollup-plugin-endorphin",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Rollup plugin for building Endorphin templates",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
