@@ -46,6 +46,9 @@ interface EndorphinPluginOptions {
     /** Additional options for template compiler */
     template?: PluginCompileOptions;
 
+    /** Generates component name from given module identifier */
+    componentName?: (id: string) => string;
+
     /** Options for CSS processing */
     css?: {
         /** A function to transform stylesheet code. */
@@ -155,6 +158,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             const cssScope = options.css.scope(id);
 
             // Parse Endorphin template into AST
+            const componentName = options.componentName ? options.componentName(id) : '';
             const parsed = endorphin.parse(source, id, options.template) as ParsedTemplate;
             const { scripts, stylesheets } = parsed.ast;
 
@@ -230,6 +234,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
                 module: 'endorphin',
                 cssScope,
                 warn: (msg: string, pos?: number) => this.warn(msg, pos),
+                component: componentName,
                 ...options.template
             });
         },
@@ -283,7 +288,11 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
 }
 
 async function transformResource(type: string, content: string, url: string, transformer: ResourceTransformer): Promise<CodeWithMap> {
-    const transformed: TransformedResource = await transformer(type, content, url);
+    let transformed: TransformedResource = await transformer(type, content, url);
+
+    if (transformer == null) {
+        transformed = content;
+    }
 
     const result: TransformedResource = typeof transformed === 'string' || Buffer.isBuffer(transformed)
         ? { code: transformed }
