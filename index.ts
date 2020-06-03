@@ -116,7 +116,6 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
         name: 'endorphin',
 
         buildStart() {
-            componentStyles.clear();
             if (options.template && Array.isArray(options.template.helpers)) {
                 // Resolve helpers symbols, defined in given list of helper files
                 const helpers: HelpersMap = {};
@@ -179,6 +178,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
 
             // Process stylesheets: apply custom transform (if required) and scope
             // CSS selectors
+            componentStyles.set(id, []);
             await Promise.all(stylesheets.map(async (stylesheet) => {
                 const isExternal = stylesheet.url !== id;
                 // XXX when resolved via `this.resolveId()`, a file name could lead
@@ -224,11 +224,6 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
                 }
 
                 const node = await nodeFromTransformed(transformed, content, fullId);
-
-                if (!componentStyles.has(id)) {
-                    componentStyles.set(id, []);
-                }
-
                 componentStyles.get(id).push(node);
             }));
 
