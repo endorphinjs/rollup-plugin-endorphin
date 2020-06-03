@@ -3,7 +3,7 @@ import * as path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 'source-map';
 import { ParsedTemplate, CompileOptions } from '@endorphinjs/template-compiler';
-import { Plugin,  } from 'rollup';
+import { Plugin, PluginContext, ModuleInfo } from 'rollup';
 import { simple } from 'acorn-walk';
 
 type TransformedResource = string | Buffer | {
@@ -109,13 +109,14 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
 
     const filter = createFilter(options.include, options.exclude);
     const jsResources = {};
-    const cssResources = new Map<string, SourceNode>();
+    const componentStyles = new Map<string, SourceNode[]>();
     const endorphin = require('endorphin/compiler');
 
     return {
         name: 'endorphin',
 
         buildStart() {
+            componentStyles.clear();
             if (options.template && Array.isArray(options.template.helpers)) {
                 // Resolve helpers symbols, defined in given list of helper files
                 const helpers: HelpersMap = {};
@@ -224,9 +225,11 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
 
                 const node = await nodeFromTransformed(transformed, content, fullId);
 
-                // NB: add scope as prefix to properly store reference to the same
-                // stylesheet file in different components
-                cssResources.set(`${cssScope}:${fullId}`, node);
+                if (!componentStyles.has(id)) {
+                    componentStyles.set(id, []);
+                }
+
+                componentStyles.get(id).push(node);
             }));
 
             // Generate JavaScript code from template AST
@@ -247,10 +250,21 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             const output = new SourceNode();
 
             // Sort stylesheets to preserve contents across builds
-            // XXX sort stylesheets in topological order?
-            const stylesheetIds = Array.from(cssResources.keys()).sort();
-            for (const id of stylesheetIds) {
-                output.add(cssResources.get(id));
+            if (this.getModuleIds) {
+                // Newer version of Rollup, use its internals to build stylesheets
+                // list in topological order
+                for (const moduleId of getTopologicalModuleList(this)) {
+                    if (componentStyles.has(moduleId)) {
+                        output.add(componentStyles.get(moduleId));
+                    }
+                }
+            } else {
+                // Older Rollup version, sort modules by name to prevent order
+                // across builds
+                const moduleIds = Array.from(componentStyles.keys()).sort();
+                for (const id of moduleIds) {
+                    output.add(componentStyles.get(id));
+                }
             }
 
             let code: string, map: SourceMapGenerator;
@@ -335,4 +349,32 @@ async function nodeFromTransformed(data: TransformedResult, source: string, file
 function createAssetUrl(baseUrl: string, ext: string, index: number = 0): string {
     const baseName = baseUrl.slice(0, -path.extname(baseUrl).length);
     return `${baseName}_${index}${ext}`;
+}
+
+function getTopologicalModuleList(plugin: PluginContext): string[] {
+    const entryModules: ModuleInfo[] = [];
+    for (const moduleId of plugin.getModuleIds()) {
+        const mod = plugin.getModuleInfo(moduleId);
+        if (mod.isEntry) {
+            entryModules.push(mod);
+        }
+    }
+
+    const lookup = new Set<string>();
+    entryModules.forEach(mod => {
+        lookup.add(mod.id);
+        walkModule(mod, plugin, lookup);
+    });
+
+    return Array.from(lookup);
+}
+
+function walkModule(mod: ModuleInfo, plugin: PluginContext, lookup: Set<string>) {
+    for (const dep of mod.importedIds) {
+        // NB: use `.has()` check to prevent recursive module loops
+        if (!lookup.has(dep)) {
+            lookup.add(dep);
+            walkModule(plugin.getModuleInfo(dep), plugin, lookup);
+        }
+    }
 }

@@ -16,7 +16,7 @@
   "author": "Sergey Chikuyonok <serge.che@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
-    "acorn-walk": "^7.0.0",
+    "acorn-walk": "^7.1.1",
     "rollup-pluginutils": "^2.8.2",
     "source-map": "^0.7.3"
   },
@@ -24,10 +24,10 @@
     "endorphin": "*"
   },
   "devDependencies": {
-    "@endorphinjs/template-compiler": "^0.6.4",
+    "@endorphinjs/template-compiler": "^0.7.4",
     "@types/node": "^13.1.6",
-    "@types/rollup": "^0.54.0",
-    "typescript": "^3.7.4"
+    "rollup": "^2.12.1",
+    "typescript": "^3.9.3"
   },
   "repository": {
     "type": "git",
