@@ -49,6 +49,9 @@ interface EndorphinPluginOptions {
     /** Generates component name from given module identifier */
     componentName?: (id: string) => string;
 
+    /** Custom entry module (to replace base rollup entry) */
+    entry?: string,
+
     /** Options for CSS processing */
     css?: {
         /** A function to transform stylesheet code. */
@@ -248,7 +251,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             if (this.getModuleIds) {
                 // Newer version of Rollup, use its internals to build stylesheets
                 // list in topological order
-                for (const moduleId of getTopologicalModuleList(this)) {
+                for (const moduleId of getTopologicalModuleList(this, options.entry)) {
                     if (componentStyles.has(moduleId)) {
                         output.add(componentStyles.get(moduleId));
                     }
@@ -346,12 +349,13 @@ function createAssetUrl(baseUrl: string, ext: string, index: number = 0): string
     return `${baseName}_${index}${ext}`;
 }
 
-function getTopologicalModuleList(plugin: PluginContext): string[] {
+function getTopologicalModuleList(plugin: PluginContext, entry?: string): string[] {
     const entryModules: ModuleInfo[] = [];
     for (const moduleId of plugin.getModuleIds()) {
         const mod = plugin.getModuleInfo(moduleId);
-        if (mod.isEntry) {
+        if (entry ? entry === path.relative('./', moduleId) : mod.isEntry) {
             entryModules.push(mod);
+            break;
         }
     }
 
