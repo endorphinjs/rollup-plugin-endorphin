@@ -353,9 +353,8 @@ function getTopologicalModuleList(plugin: PluginContext, entry?: string): string
     const entryModules: ModuleInfo[] = [];
     for (const moduleId of plugin.getModuleIds()) {
         const mod = plugin.getModuleInfo(moduleId);
-        if (entry ? entry === path.relative('./', moduleId) : mod.isEntry) {
+        if (mod.isEntry || entry && entry === path.relative('./', moduleId)) {
             entryModules.push(mod);
-            break;
         }
     }
 
