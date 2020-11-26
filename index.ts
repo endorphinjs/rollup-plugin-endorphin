@@ -3,7 +3,7 @@ import * as path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 'source-map';
 import { ParsedTemplate, CompileOptions } from '@endorphinjs/template-compiler';
-import { Plugin, PluginContext, ModuleInfo } from 'rollup';
+import { Plugin, PluginContext, ModuleInfo, OutputOptions } from 'rollup';
 import { simple } from 'acorn-walk';
 
 type TransformedResource = string | Buffer | {
@@ -49,6 +49,9 @@ interface EndorphinPluginOptions {
     /** Generates component name from given module identifier */
     componentName?: (id: string) => string;
 
+    /** Custom entries of module (to replace base rollup entry) */
+    entries?: string[],
+
     /** Options for CSS processing */
     css?: {
         /** A function to transform stylesheet code. */
@@ -58,10 +61,9 @@ interface EndorphinPluginOptions {
         scope?: (fileName: string) => string;
 
         /**
-         * Path where CSS bundle should be saved or function which accepts generated
          * CSS bundle and its source map
          */
-        name?: string | CSSBundleHandler;
+        bundle?: CSSBundleHandler;
     };
 }
 
@@ -237,61 +239,53 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             });
         },
 
-        async generateBundle(outputOptions: any) {
-            if (!options.css.name) {
-                return;
-            }
-
-            const output = new SourceNode();
-
+        async generateBundle(outputOptions: OutputOptions) {
             // Sort stylesheets to preserve contents across builds
-            if (this.getModuleIds) {
-                // Newer version of Rollup, use its internals to build stylesheets
-                // list in topological order
-                for (const moduleId of getTopologicalModuleList(this)) {
+            const entries = getEntries(this, options.entries);
+
+            for (const entry of entries) {
+                const output = new SourceNode();
+                const modulesList = getTopologicalModuleList(this, entry);
+
+                for (const moduleId of modulesList) {
                     if (componentStyles.has(moduleId)) {
                         output.add(componentStyles.get(moduleId));
                     }
                 }
-            } else {
-                // Older Rollup version, sort modules by name to prevent order
-                // across builds
-                const moduleIds = Array.from(componentStyles.keys()).sort();
-                for (const id of moduleIds) {
-                    output.add(componentStyles.get(id));
+
+                let code: string, map: SourceMapGenerator;
+
+                if (outputOptions.sourcemap) {
+                    const result = output.toStringWithSourceMap();
+                    code = result.code;
+                    map = result.map;
+                } else {
+                    code = output.toString();
                 }
-            }
 
-            let code: string, map: SourceMapGenerator;
+                if (typeof options.css.bundle === 'function') {
+                    return options.css.bundle(code, map);
+                }
 
-            if (outputOptions.sourcemap) {
-                const result = output.toStringWithSourceMap();
-                code = result.code;
-                map = result.map;
-            } else {
-                code = output.toString();
-            }
+                const fileName = path.basename(entry.id, path.extname(entry.id)) + '.css';
 
-            if (typeof options.css.name === 'function') {
-                return options.css.name(code, map);
-            }
+                if (map) {
+                    const sourceMapName = fileName + '.map';
+                    code += `\n/*# sourceMappingURL=${sourceMapName} */`;
 
-            if (map) {
-                const sourceMapName = options.css.name + '.map';
-                code += `\n/*# sourceMappingURL=${sourceMapName} */`;
+                    this.emitFile({
+                        type: 'asset',
+                        fileName: sourceMapName,
+                        source: map.toString()
+                    });
+                }
 
                 this.emitFile({
                     type: 'asset',
-                    fileName: sourceMapName,
-                    source: map.toString()
+                    name: fileName,
+                    source: code
                 });
             }
-
-            this.emitFile({
-                type: 'asset',
-                name: options.css.name,
-                source: code
-            });
         }
     };
 }
@@ -346,22 +340,44 @@ function createAssetUrl(baseUrl: string, ext: string, index: number = 0): string
     return `${baseName}_${index}${ext}`;
 }
 
-function getTopologicalModuleList(plugin: PluginContext): string[] {
+function getEntries(plugin: PluginContext, entries: string[] = []) {
     const entryModules: ModuleInfo[] = [];
-    for (const moduleId of plugin.getModuleIds()) {
-        const mod = plugin.getModuleInfo(moduleId);
-        if (mod.isEntry) {
-            entryModules.push(mod);
+    const lookup = new Set<string>();
+
+    if (entries.length) {
+        for (const entry of entries) {
+            const moduleId = path.resolve(entry);
+
+            if (moduleId) {
+                addEntry(plugin.getModuleInfo(moduleId), lookup, entryModules);
+            }
+        }
+    } else {
+        for (const moduleId of plugin.getModuleIds()) {
+            const mod = plugin.getModuleInfo(moduleId);
+
+            if (mod.isEntry && !lookup.has(moduleId)) {
+                addEntry(mod, lookup, entryModules);
+            }
         }
     }
 
+    return entryModules;
+}
+
+function getTopologicalModuleList(plugin: PluginContext, entry: ModuleInfo) {
     const lookup = new Set<string>();
-    entryModules.forEach(mod => {
-        lookup.add(mod.id);
-        walkModule(mod, plugin, lookup);
-    });
+
+    walkModule(entry, plugin, lookup);
 
     return Array.from(lookup);
+}
+
+function addEntry(mod: ModuleInfo, lookup: Set<string>, list: ModuleInfo[]) {
+    if (mod) {
+        lookup.add(mod.id);
+        list.push(mod);
+    }
 }
 
 function walkModule(mod: ModuleInfo, plugin: PluginContext, lookup: Set<string>) {
