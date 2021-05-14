@@ -39,6 +39,12 @@ interface EndorphinPluginOptions {
     include?: string | string[],
     exclude?: string | string[],
 
+    /**
+     * If given, emits template AST JSON into given path.
+     * This function accepts template module ID and should return path where AST
+     * should be stored
+     */
+    astBase?: (id: string) => string;
 
     /** Mapping of type attributes of style and script tags to extension */
     types: { [type: string]: string };
@@ -163,6 +169,15 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             const componentName = options.componentName ? options.componentName(id) : '';
             const parsed = endorphin.parse(source, id, options.template) as ParsedTemplate;
             const { scripts, stylesheets } = parsed.ast;
+
+            if (options.astBase) {
+                const astPath = options.astBase(id);
+                this.emitFile({
+                    type: 'asset',
+                    fileName: astPath,
+                    source: JSON.stringify(parsed.ast)
+                });
+            }
 
             // For inline scripts, emit source code as external module so we can
             // hook on it’s processing
