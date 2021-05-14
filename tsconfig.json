@@ -5,6 +5,7 @@
     "noUnusedLocals": true,
     "alwaysStrict": true,
     "noImplicitThis": true,
+    "esModuleInterop": true,
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "./dist",

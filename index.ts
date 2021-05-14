@@ -3,8 +3,8 @@ import * as path from 'path';
 import { createFilter } from 'rollup-pluginutils';
 import { SourceNode, SourceMapConsumer, RawSourceMap, SourceMapGenerator } from 'source-map';
 import { ParsedTemplate, CompileOptions } from '@endorphinjs/template-compiler';
-import { Plugin, PluginContext, ModuleInfo, OutputOptions } from 'rollup';
-import { simple } from 'acorn-walk';
+import { Plugin, PluginContext, ModuleInfo, NormalizedOutputOptions } from 'rollup';
+import ts from 'typescript';
 
 type TransformedResource = string | Buffer | {
     code?: string | Buffer,
@@ -123,28 +123,21 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
     return {
         name: 'endorphin',
 
-        buildStart() {
+        async buildStart() {
             if (options.template && Array.isArray(options.template.helpers)) {
                 // Resolve helpers symbols, defined in given list of helper files
                 const helpers: HelpersMap = {};
 
-                options.template.helpers.forEach(helper => {
-                    const absPath = path.resolve(helper);
-                    const contents = fs.readFileSync(absPath, 'utf8');
-                    this.addWatchFile(absPath);
-                    const ast = this.parse(contents, { sourceType: 'module' });
-                    const symbols: string[] = [];
-
-                    simple(ast, {
-                        ExportNamedDeclaration(node: any) {
-                            if (node.declaration.type === 'FunctionDeclaration' || node.declaration.type === 'VariableDeclaration') {
-                                symbols.push(node.declaration.id.name);
-                            }
-                        }
-                    });
-
-                    helpers[helper] = symbols;
-                });
+                for (const helper of options.template.helpers) {
+                    const resolved = await this.resolve(helper);
+                    if (resolved) {
+                        const contents = fs.readFileSync(resolved.id, 'utf8');
+                        helpers[helper] = getSymbols(resolved.id, contents);
+                        this.addWatchFile(resolved.id);
+                    } else {
+                        this.warn(`Unable to resolve helper path: ${resolved}`);
+                    }
+                }
 
                 options.template.helpers = helpers;
             }
@@ -254,7 +247,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             });
         },
 
-        async generateBundle(outputOptions: OutputOptions) {
+        async generateBundle(outputOptions: NormalizedOutputOptions) {
             // Sort stylesheets to preserve contents across builds
             const entries = getEntries(this, options.entries);
 
@@ -403,4 +396,27 @@ function walkModule(mod: ModuleInfo, plugin: PluginContext, lookup: Set<string>)
             walkModule(plugin.getModuleInfo(dep), plugin, lookup);
         }
     }
+}
+
+/**
+ * Returns list of exported symbols of given file
+ */
+function getSymbols(name: string, source: string): string[] {
+    const result: string[] = [];
+    const file = ts.createSourceFile(name, source, ts.ScriptTarget.Latest);
+    file.statements.forEach(child => {
+        if (child.modifiers?.some(mod => mod.kind === ts.SyntaxKind.ExportKeyword)) {
+            if (ts.isFunctionDeclaration(child) && child.name) {
+                result.push(child.name.text);
+            } else if (ts.isVariableStatement(child)) {
+                child.declarationList.forEachChild(n => {
+                    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) {
+                        result.push(n.name.text);
+                    }
+                })
+            }
+        }
+    });
+
+    return result;
 }

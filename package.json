@@ -6,7 +6,7 @@
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "prepublish": "npm run build"
+    "prepare": "npm run build"
   },
   "keywords": [
     "rollup-plugin",
@@ -16,18 +16,17 @@
   "author": "Sergey Chikuyonok <serge.che@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
-    "acorn-walk": "^7.1.1",
     "rollup-pluginutils": "^2.8.2",
-    "source-map": "^0.7.3"
+    "source-map": "^0.7.3",
+    "typescript": "^4.2.4"
   },
   "peerDependencies": {
     "endorphin": "*"
   },
   "devDependencies": {
-    "@endorphinjs/template-compiler": "^0.7.4",
-    "@types/node": "^13.1.6",
-    "rollup": "^2.12.1",
-    "typescript": "^3.9.3"
+    "@endorphinjs/template-compiler": "^0.8.7",
+    "@types/node": "^14.0.0",
+    "rollup": "^2.47.0"
   },
   "repository": {
     "type": "git",
