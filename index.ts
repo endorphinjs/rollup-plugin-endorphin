@@ -405,7 +405,15 @@ function getSymbols(name: string, source: string): string[] {
     const result: string[] = [];
     const file = ts.createSourceFile(name, source, ts.ScriptTarget.Latest);
     file.statements.forEach(child => {
-        if (child.modifiers?.some(mod => mod.kind === ts.SyntaxKind.ExportKeyword)) {
+        if (ts.isExportDeclaration(child)) {
+            // const a = 1;
+            // const b = 2;
+            // export { a, b as foo };
+            if (child.exportClause && ts.isNamedExports(child.exportClause)) {
+                child.exportClause.elements.forEach(exp => result.push(exp.name.text));
+            }
+        } else if (child.modifiers?.some(mod => mod.kind === ts.SyntaxKind.ExportKeyword)) {
+            // Any statement with `export` keyword
             if (ts.isFunctionDeclaration(child) && child.name) {
                 result.push(child.name.text);
             } else if (ts.isVariableStatement(child)) {
@@ -413,7 +421,7 @@ function getSymbols(name: string, source: string): string[] {
                     if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name)) {
                         result.push(n.name.text);
                     }
-                })
+                });
             }
         }
     });
