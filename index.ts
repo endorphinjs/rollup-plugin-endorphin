@@ -70,6 +70,8 @@ interface EndorphinPluginOptions {
          * CSS bundle and its source map
          */
         bundle?: CSSBundleHandler;
+
+        fileName?: (entry: ModuleInfo) => string;
     };
 }
 
@@ -275,7 +277,14 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
                     return options.css.bundle(code, map);
                 }
 
-                const fileName = path.basename(entry.id, path.extname(entry.id)) + '.css';
+                let fileName: string;
+                if (options.css.fileName) {
+                    fileName = options.css.fileName(entry);
+                }
+
+                if (!fileName) {
+                    fileName = path.basename(entry.id, path.extname(entry.id)) + '.css';
+                }
 
                 if (map) {
                     const sourceMapName = fileName + '.map';
