@@ -121,11 +121,13 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
     const jsResources = {};
     const componentStyles = new Map<string, SourceNode[]>();
     const endorphin = require('endorphin/compiler');
+    let cssRefId = '';
 
     return {
         name: 'endorphin',
 
         async buildStart() {
+            cssRefId = '';
             if (options.template && Array.isArray(options.template.helpers)) {
                 // Resolve helpers symbols, defined in given list of helper files
                 const helpers: HelpersMap = {};
@@ -249,7 +251,15 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             });
         },
 
-        async generateBundle(outputOptions: NormalizedOutputOptions) {
+        resolveImportMeta(property) {
+            if (property === 'appCSS' && cssRefId) {
+                return `"${this.getFileName(cssRefId)}"`;
+            }
+
+            return null;
+        },
+
+        async renderStart(outputOptions: NormalizedOutputOptions) {
             // Sort stylesheets to preserve contents across builds
             const entries = getEntries(this, options.entries);
 
@@ -297,7 +307,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
                     });
                 }
 
-                this.emitFile({
+                cssRefId = this.emitFile({
                     type: 'asset',
                     name: fileName,
                     source: code
