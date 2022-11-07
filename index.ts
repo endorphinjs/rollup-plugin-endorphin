@@ -233,7 +233,11 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
                         filename = map.file;
                     }
 
-                    const scoped = await endorphin.scopeCSS(transformed.code, cssScope, { filename, map });
+                    const scoped = await endorphin.scopeCSS(transformed.code, cssScope, {
+                        filename,
+                        map,
+                        classScope: options.template.classScope
+                    });
                     transformed = typeof scoped === 'string' ? { code: scoped } : scoped;
                 }
 
