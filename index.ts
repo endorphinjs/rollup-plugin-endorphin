@@ -15,7 +15,7 @@ type TransformedResult = string | CodeWithMap;
 type CodeWithMap = { code: string, map?: any };
 
 interface ResourceTransformer {
-    (type: string, code: string, filename: string): TransformedResource | Promise<TransformedResource>;
+    (this: PluginContext, type: string, code: string, filename: string): TransformedResource | Promise<TransformedResource>;
 }
 
 interface CSSBundleHandler {
@@ -108,14 +108,10 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
         ...options
     };
 
-    if (!options.css) {
-        options.css = defaultCSSOptions;
-    } else {
-        options.css = {
-            ...defaultCSSOptions,
-            ...options.css
-        };
-    }
+    options.css = {
+        ...defaultCSSOptions,
+        ...options.css
+    };
 
     const filter = createFilter(options.include, options.exclude);
     const jsResources = {};
@@ -214,7 +210,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
 
                 // Apply custom CSS preprocessing
                 if (typeof options.css.preprocess === 'function') {
-                    const result = await transformResource(stylesheet.mime, content, fullId, options.css.preprocess);
+                    const result = await transformResource(this, stylesheet.mime, content, fullId, options.css.preprocess);
                     if (result != null) {
                         transformed = result;
                     }
@@ -321,8 +317,8 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
     };
 }
 
-async function transformResource(type: string, content: string, url: string, transformer: ResourceTransformer): Promise<CodeWithMap> {
-    let transformed: TransformedResource = await transformer(type, content, url);
+async function transformResource(ctx: PluginContext, type: string, content: string, url: string, transformer: ResourceTransformer): Promise<CodeWithMap> {
+    let transformed: TransformedResource = await transformer.call(ctx, type, content, url);
 
     if (transformer == null) {
         transformed = content;
