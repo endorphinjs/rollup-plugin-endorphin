@@ -177,7 +177,7 @@ export default function endorphin(options?: EndorphinPluginOptions): Plugin {
             scripts.forEach((script, i) => {
                 if (script.content) {
                     let assetUrl = createAssetUrl(parsed.url, options.types[script.mime] || options.types[defaultScriptType], i);
-                    if (assetUrl[0] !== '.' && assetUrl[0] !== '/' && assetUrl[0] !== '@') {
+                    if (assetUrl[0] !== '.' && !path.isAbsolute(assetUrl) && assetUrl[0] !== '@') {
                         assetUrl = `./${assetUrl}`;
                     }
                     jsResources[assetUrl] = script.transformed || script.content;
